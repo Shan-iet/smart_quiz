@@ -1058,7 +1058,7 @@ function startQuestionTimer() {
     const isLastQuestion = qIndex === questions.length - 1;
     
     // Apply 5x multiplier if last, otherwise use normal setting
-    qSecondsLeft = isLastQuestion ? (activeSession.settings.time * 5) : activeSession.settings.time; 
+    qSecondsLeft = isLastQuestion ? (activeSession.settings.time * 0.25) : activeSession.settings.time; 
     
     resumeQuestionTimer(); 
 }
@@ -1068,7 +1068,7 @@ function resumeQuestionTimer() {
         qSecondsLeft--; 
         document.getElementById("questionTimer").innerText = qSecondsLeft + "s"; 
         
-        if(qSecondsLeft <= 1) {
+        if(qSecondsLeft <= 0) {
             clearInterval(qTimer);
             if (qIndex === questions.length - 1) {
                 // If last question, force auto-submit
@@ -1118,7 +1118,7 @@ function finishQuiz(force = false) {
   pauseAllTimers(); 
   clearInterval(autoSaveInterval);
   
-  // 1. Force "Guess" status for Flagged Attempts (Any Reason)
+  // 1. Force "Guess" status for Flagged Attempts
   questions.forEach(q => {
       if (q.sel && q.flag) {
           q.guess = true; 
@@ -1126,20 +1126,16 @@ function finishQuiz(force = false) {
   });
 
   let c=0, w=0, u=0; 
-  // NEW: Initialize Guess Counters
   let correctG = 0, totalG = 0;
-  
   let sectionStats = {};
 
   questions.forEach(q => { 
       const sec = q.section || "General";
-      // Initialize Section Stats (Now includes correctG and totalG)
       if(!sectionStats[sec]) sectionStats[sec] = { c:0, w:0, u:0, total:0, time:0, correctG:0, totalG:0 };
       
       sectionStats[sec].total++;
       sectionStats[sec].time += (q.timeSpent || 0);
 
-      // NEW: Track Guess Metrics
       if (q.sel && q.guess) {
           totalG++;
           sectionStats[sec].totalG++;
@@ -1149,7 +1145,6 @@ function finishQuiz(force = false) {
           }
       }
 
-      // Standard Stats
       if(!q.sel) { u++; sectionStats[sec].u++; } 
       else if(q.sel === q.answer) { c++; sectionStats[sec].c++; } 
       else { w++; sectionStats[sec].w++; }
@@ -1158,25 +1153,46 @@ function finishQuiz(force = false) {
   const s = activeSession.settings;
   const rawScore = (c * s.mark) - (w * s.neg);
   
-  // Save expanded report
   activeSession.report = { 
       c, w, u, 
-      correctG, totalG, // New Data
+      correctG, totalG, 
       score: Number(rawScore.toFixed(2)), 
       total: questions.length, 
       sections: sectionStats 
   };
   activeSession.status = "completed";
   
-  saveToHistory();
+  // --- CRITICAL FIX 1: Prevent Storage Crash ---
+  // If this fails (because file is 10MB), we catch the error and continue anyway.
+  try {
+      saveToHistory();
+  } catch (e) {
+      console.warn("History save failed (Storage Full). Skipping to Report.", e);
+  }
+  
   showReport(); 
   
-  try {
-      generateAnalyticPDF();
-      downloadSyncFile("completed");
-  } catch (e) {
-      console.warn("Auto-download blocked. Please download manually.");
-  }
+  // --- CRITICAL FIX 2: Correct Download Order ---
+  
+  // A. Download JSON IMMEDIATELY (The Save Data)
+  // We prioritize this because it's the most important file.
+  setTimeout(() => {
+      try {
+         downloadSyncFile("completed");
+      } catch (e) {
+         console.error("JSON download failed:", e);
+      }
+  }, 100);
+
+  // B. Download PDF (Delayed)
+  // We delay this by 2 seconds so the browser doesn't block "simultaneous downloads"
+  setTimeout(() => {
+      try {
+          generateAnalyticPDF();
+      } catch (e) {
+          console.warn("PDF Auto-download blocked. Please download manually.");
+      }
+  }, 2000);
 }
 
 // UPDATED: downloadSyncFile now takes an argument for suffix
@@ -1193,11 +1209,11 @@ function downloadSyncFile(fileType = "sync") {
     const finalName = `${smartName}_${fileType}_${timestamp}.json`;
     const jsonString = JSON.stringify(activeSession);
 
-    // --- UPGRADE START: Use Blob instead of Data URI ---
-    // This handles 10MB, 50MB, or even 100MB files easily using RAM
+    // 1. Create Blob (Large File Support)
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     
+    // 2. Trigger Download
     const dlNode = document.createElement('a');
     dlNode.setAttribute("href", url);
     dlNode.setAttribute("download", finalName);
@@ -1205,9 +1221,11 @@ function downloadSyncFile(fileType = "sync") {
     dlNode.click();
     dlNode.remove();
     
-    // Clean up the URL object to free RAM
-    URL.revokeObjectURL(url);
-    // --- UPGRADE END ---
+    // 3. CRITICAL FIX: Delay Cleanup
+    // We must wait for the download to actually start before revoking the URL.
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+    }, 1000); 
 }
 
 function showReport() {
