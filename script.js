@@ -1,3 +1,4 @@
+let isStorageFull = false;
 let activeSession = null, questions = [], qIndex = 0, qTimer, totalTimer, autoSaveInterval, questionDurationTimer;
 let totalSeconds = 0, qSecondsLeft = 0;
 let recentHistory = JSON.parse(localStorage.getItem("QUIZ_HISTORY") || "[]");
@@ -397,7 +398,78 @@ function startResumeSession() {
 }
 
 
-function saveAndLoad() { saveToHistory(); loadSession(); }
+// 1. MAKE SURE this variable is at the top of your script.js file
+// let isStorageFull = false; 
+
+// Ensure this variable is at the top of script.js
+// let isStorageFull = false; 
+
+// Ensure 'let isStorageFull = false;' is at the top of script.js
+
+function saveAndLoad() {
+    if (!activeSession) return;
+
+    // 1. Update UI Counters (FIXED ID HERE)
+    const qCountBtn = document.getElementById("questionCounter");
+    if (qCountBtn) {
+        qCountBtn.innerText = `Q${activeSession.qIndex + 1} / ${activeSession.questions.length}`;
+    }
+    
+    // Update sidebar counts
+    const flaggedCount = activeSession.questions.filter(q => q.flag).length;
+    const unattemptedCount = activeSession.questions.filter(q => q.sel === null).length;
+    
+    const flagBtn = document.getElementById("flagCount");
+    if(flagBtn) flagBtn.innerText = flaggedCount;
+    
+    const unatmptBtn = document.getElementById("unattemptedCount");
+    if(unatmptBtn) unatmptBtn.innerText = unattemptedCount;
+
+    // 2. Try to Save (But don't crash if we can't)
+    if (!isStorageFull) {
+        const sessionStr = JSON.stringify(activeSession);
+        
+        // Check Size Limit (approx 4.5MB)
+        if (sessionStr.length > 4700000) {
+            console.warn("Session too large (>4.5MB). Switching to RAM-only mode.");
+            
+            // Mark storage as full so we don't try again
+            isStorageFull = true;
+            localStorage.removeItem("QUIZ_SESSION");
+            
+            // Show a non-intrusive warning
+            const msg = document.createElement("div");
+            msg.innerHTML = `
+                <div style="position:fixed; top:0; left:0; width:100%; background:#f59e0b; color:black; text-align:center; padding:8px; z-index:9999; font-weight:bold; box-shadow:0 2px 10px rgba(0,0,0,0.2);">
+                    ⚠️ Large File Detected. Auto-Save Disabled. <br/>
+                    <span style="font-weight:normal; font-size:0.85em;">Use "Save & Exit" or "Submit" at the end to save progress.</span>
+                    <button onclick="this.parentElement.remove()" style="margin-left:15px; background:white; border:1px solid #333; padding:2px 8px; cursor:pointer;">OK</button>
+                </div>
+            `;
+            document.body.appendChild(msg);
+
+        } else {
+            // Attempt standard save
+            try {
+                saveToHistory(); // Update recent history
+                localStorage.setItem("QUIZ_SESSION", sessionStr); // Save current state
+                document.body.style.borderTop = "none"; 
+            } catch (e) {
+                // Handle Quota Error silently and switch mode
+                if (e.name === "QuotaExceededError" || e.code === 22) {
+                    isStorageFull = true;
+                    console.warn("Storage Quota Exceeded. Auto-save disabled.");
+                }
+            }
+        }
+    }
+
+    // 3. CRITICAL: Always Load the Quiz
+    // This runs 100% of the time, regardless of storage errors.
+    if (document.getElementById("home").classList.contains("hidden") === false) {
+        loadSession();
+    }
+}
 
 function loadSession() {
   document.querySelector('.app-container').classList.add('quiz-mode');
@@ -1109,40 +1181,33 @@ function finishQuiz(force = false) {
 
 // UPDATED: downloadSyncFile now takes an argument for suffix
 function downloadSyncFile(fileType = "sync") {
-    // 1. Generate Timestamp: DD-MM-YYYY_HH-MM
     const now = new Date();
-    const datePart = String(now.getDate()).padStart(2, '0') + "-" + 
-                     String(now.getMonth() + 1).padStart(2, '0') + "-" + 
-                     now.getFullYear();
-    const timePart = String(now.getHours()).padStart(2, '0') + "-" + 
-                     String(now.getMinutes()).padStart(2, '0');
-    
-    const timestamp = `${datePart}_${timePart}`;
+    const timestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // 2. Determine Filename Base
-    // We prefer the original filename (set during initial load) to preserve the identity of the full file.
-    // If that's missing, we fall back to generating a name from the currently active sections.
     let smartName = activeSession.originalFileName;
-    
     if (!smartName) {
-        // Fallback: Generate name from currently visible sections
         const uniqueSections = [...new Set(activeSession.questions.map(q => q.section))];
         smartName = generateSmartFilename(uniqueSections);
     }
 
-    // 3. Construct Final Name
-    // Format: [SmartName]_[Type]_[Timestamp].json
     const finalName = `${smartName}_${fileType}_${timestamp}.json`;
+    const jsonString = JSON.stringify(activeSession);
 
-    // 4. Download Process
-    // activeSession contains both .questions (your progress) and .unusedQuestions (the raw 8MB remainder)
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeSession));
+    // --- UPGRADE START: Use Blob instead of Data URI ---
+    // This handles 10MB, 50MB, or even 100MB files easily using RAM
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
     const dlNode = document.createElement('a');
-    dlNode.setAttribute("href", dataStr);
+    dlNode.setAttribute("href", url);
     dlNode.setAttribute("download", finalName);
     document.body.appendChild(dlNode);
     dlNode.click();
     dlNode.remove();
+    
+    // Clean up the URL object to free RAM
+    URL.revokeObjectURL(url);
+    // --- UPGRADE END ---
 }
 
 function showReport() {
@@ -1343,7 +1408,25 @@ async function generateAnalyticPDF() {
   doc.save(`${smartName}_Report_${timestamp}.pdf`);
 }
 
-function autoSave() { activeSession.qIndex = qIndex; activeSession.totalSeconds = totalSeconds; saveToHistory(); }
+function autoSave() { 
+    // If we already know storage is full/broken, do NOT attempt to save.
+    if (isStorageFull) return;
+
+    if(activeSession) {
+        activeSession.qIndex = qIndex; 
+        activeSession.totalSeconds = totalSeconds; 
+    }
+    
+    try {
+        saveToHistory();
+        // We skip saving the full session to localStorage here to avoid lag on large files
+    } catch(e) {
+        console.warn("Auto-save failed:", e);
+        isStorageFull = true; // Stop future attempts if one fails
+    }
+}
+
+
 function saveToHistory() { recentHistory = [activeSession, ...recentHistory.filter(q => q.title !== activeSession.title)].slice(0, 5); localStorage.setItem("QUIZ_HISTORY", JSON.stringify(recentHistory)); }
 function renderRecentQuizzes() {
   const list = document.getElementById("recentQuizzesList");
