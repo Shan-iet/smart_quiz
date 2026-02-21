@@ -3,10 +3,199 @@ let activeSession = null, questions = [], qIndex = 0, qTimer, totalTimer, autoSa
 let totalSeconds = 0, qSecondsLeft = 0;
 let recentHistory = JSON.parse(localStorage.getItem("QUIZ_HISTORY") || "[]");
 
+const BASE_MAPPING = {
+  "HISTORY": [
+    "Prehistoric to Mauryan", "POST MAURYAN TO POST GUPTAS", "EARLIER MEDIEVAL HISTORY AND DELHI SULTANATE",
+    "MUGHALS AND REGIONAL STATES", "ARCHITECTURE AND PAINTINGS", "INDIAN LITERATURE AND PERFORMING ARTS",
+    "PHILOSOPHIES (HISTORY)", "MISCELLANEOUS ANCIENT HISTORY"
+  ],
+  "ECONOMICS": [
+    "BASICS OF ECONOMICS", "PUBLIC FINANCE", "BANKING AND CAPITAL MARKET", "DEVELOPMENTAL ECONOMICS",
+    "SECTORS OF ECONOMY", "INTERNATIONAL INSTITUTIONS ECONOMICS", "AGRICULTURE ECONOMICS", "Vivek Economics"
+  ],
+  "GEOGRAPHY": [
+    "UNIVERSE & THE EVOLUTION OF EARTH", "GEOMORPOLOGY", "OCEANOGRAPHY", "CLIMATOLOGY",
+    "INDIA PHYSICAL ENVIRONMENT", "ECONOMIC & HUMAN GEOGRAPHY", "MISCELLANEOUS GEOGRAPHY"
+  ],
+  "POLITY": [
+    "INTRODUCTION TO THE CONSTITUTION", "FOUNDATIONS OF CONSTITUTION", "SYSTEM OF GOVERNMENT", "JUDICIARY",
+    "CENTRE AND STATE EXECUTIVES", "UNION AND STATE LEGISLATURE", "LOCAL GOVERNMENT - UNION TERRITORIES SPECIAL STATUS AREAS",
+    "CONSTITUTIONAL AND NON-CONSTITUTIONAL BODIES", "MISCELLANEOUS POLITY", "LOCAL GOVERNMENT"
+  ],
+  "OTHER": []
+};
+
+// Replaces fake Cyrillic English-lookalikes with real English letters
+function sanitizeSectionName(str) {
+    if (!str) return "";
+    const homoglyphs = {
+        'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'І': 'I', 
+        'Ј': 'J', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 
+        'Х': 'X', 'У': 'Y', 'а': 'a', 'с': 'c', 'е': 'e', 'о': 'o', 
+        'р': 'p', 'х': 'x', 'у': 'y'
+    };
+    return str.split('').map(char => homoglyphs[char] || char).join('');
+}
+
+let currentMapping = JSON.parse(JSON.stringify(BASE_MAPPING));
+
 window.onload = () => {
     renderRecentQuizzes();
     document.querySelector('.app-container').classList.remove('quiz-mode');
+    initDropdowns();
 };
+
+function initDropdowns() {
+    populateSubjectDropdown('startSubjectSelect');
+    populateSubjectDropdown('resumeSubjectSelect');
+}
+
+function populateSubjectDropdown(id) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">Subject</option>';
+    for (let subj in currentMapping) {
+        if (subj === 'OTHER' && currentMapping[subj].length === 0) continue;
+        let opt = document.createElement('option');
+        opt.value = subj; 
+        opt.innerText = subj;
+        opt.title = subj; // Add hover tooltip
+        select.appendChild(opt);
+    }
+    if (currentVal && currentMapping[currentVal]) select.value = currentVal;
+}
+
+function updateSectionDropdown(subjectId, sectionId) {
+    const subj = document.getElementById(subjectId).value;
+    const secSelect = document.getElementById(sectionId);
+    secSelect.innerHTML = '<option value="">Section</option>';
+    if (subj && currentMapping[subj]) {
+        let allOpt = document.createElement('option');
+        allOpt.value = subj; 
+        allOpt.innerText = `All ${subj}`;
+        allOpt.title = `All ${subj}`; // Add hover tooltip
+        secSelect.appendChild(allOpt);
+        
+        currentMapping[subj].forEach(sec => {
+            let opt = document.createElement('option');
+            opt.value = sec; 
+            opt.innerText = sec;
+            opt.title = sec; // Add hover tooltip
+            secSelect.appendChild(opt);
+        });
+    }
+}
+
+function addFilterTag(sectionSelectId, tagsContainerId, hiddenInputId) {
+    const secSelect = document.getElementById(sectionSelectId);
+    const val = secSelect.value;
+    if (!val) return;
+    const hiddenInput = document.getElementById(hiddenInputId);
+    let currentTags = hiddenInput.value ? hiddenInput.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (currentTags.includes(val)) return;
+    currentTags.push(val);
+    hiddenInput.value = currentTags.join(', ');
+    renderTags(tagsContainerId, hiddenInputId, currentTags);
+}
+
+function removeFilterTag(val, tagsContainerId, hiddenInputId) {
+    const hiddenInput = document.getElementById(hiddenInputId);
+    let currentTags = hiddenInput.value ? hiddenInput.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    currentTags = currentTags.filter(t => t !== val);
+    hiddenInput.value = currentTags.join(', ');
+    renderTags(tagsContainerId, hiddenInputId, currentTags);
+}
+
+function renderTags(containerId, hiddenInputId, tagsArray) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    tagsArray.forEach(tag => {
+        const span = document.createElement('span'); 
+        span.className = 'filter-tag';
+        // Wrap the tag text in the new .tag-text span and add a title attribute
+        span.innerHTML = `
+            <span class="tag-text" title="${tag}">${tag}</span> 
+            <span class="tag-close" title="Remove" onclick="removeFilterTag('${tag.replace(/'/g, "\\'")}', '${containerId}', '${hiddenInputId}')">×</span>
+        `;
+        container.appendChild(span);
+    });
+}
+
+async function updateFileNameAndExtract(input, displayId) {
+    if(input.files.length > 1) document.getElementById(displayId).innerText = `${input.files.length} Files Selected`;
+    else document.getElementById(displayId).innerText = input.files[0]?.name || "Select File"; 
+    await extractSectionsFromFiles(input);
+}
+
+// Rewriting original Sync Import handler
+async function initiateSyncImport() {
+    const input = document.getElementById('importInput');
+    document.getElementById('syncNameDisplay').innerText = input.files[0]?.name || "Select File";
+    await extractSectionsFromFiles(input);
+}
+
+async function extractSectionsFromFiles(inputElement) {
+    const files = inputElement.files;
+    let newSections = new Set();
+    for (let file of files) {
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            let allQ = [];
+            if (Array.isArray(json)) allQ = json;
+            else if (json.questions || json.unusedQuestions || json.data) {
+                if (json.questions) allQ.push(...json.questions);
+                if (json.unusedQuestions) allQ.push(...json.unusedQuestions);
+                if (json.data) allQ.push(...json.data);
+            }
+            const rootSection = json.section || null;
+            const fileNameBase = file.name.replace(/\.[^/.]+$/, ""); 
+            allQ.forEach(q => {
+                let s = q.section || q._section || rootSection || fileNameBase;
+                if (typeof s === 'string') {
+                    // Sanitize the fake characters first!
+                    s = sanitizeSectionName(s); 
+                    s = s.split(/[\s_-]+/).filter(Boolean).join(' '); // normalize spaces
+                    newSections.add(s);
+                    
+                    // Also update the question's internal section so it matches later
+                    q.section = s; 
+                    if(q._section) q._section = s;
+                }
+            });
+        } catch(e) { console.error(e); }
+    }
+    updateDynamicMapping(Array.from(newSections));
+}
+
+function updateDynamicMapping(extractedSections) {
+    currentMapping = JSON.parse(JSON.stringify(BASE_MAPPING));
+    if (!currentMapping["OTHER"]) currentMapping["OTHER"] = [];
+    
+    let existingSectionsList = [];
+    for (let subj in BASE_MAPPING) existingSectionsList.push(...BASE_MAPPING[subj].map(s => s.toLowerCase().replace(/[\s_-]+/g, '')));
+    
+    extractedSections.forEach(sec => {
+        let normalizedSec = sec.toLowerCase().replace(/[\s_-]+/g, '');
+        if (!existingSectionsList.includes(normalizedSec)) {
+            if (!currentMapping["OTHER"].some(o => o.toLowerCase().replace(/[\s_-]+/g, '') === normalizedSec)) {
+                currentMapping["OTHER"].push(sec);
+            }
+        }
+    });
+    initDropdowns(); // Refresh UI
+}
+
+// A smart comparer logic so Subject selections apply to all underlying sections
+function checkSectionMatch(qSec, target, mapping) {
+    const qNorm = (qSec || "").toLowerCase().replace(/[\s_-]+/g, ' ');
+    const tNorm = target.toLowerCase().replace(/[\s_-]+/g, ' ');
+    if (qNorm.includes(tNorm)) return true;
+    const subjectKey = Object.keys(mapping).find(k => k.toLowerCase().replace(/[\s_-]+/g, ' ') === tNorm);
+    if (subjectKey) return mapping[subjectKey].some(sec => qNorm.includes(sec.toLowerCase().replace(/[\s_-]+/g, ' ')));
+    return false;
+}
 
 /* --- ROBUST VISIBILITY HANDLER --- */
 function handleAppVisibility() {
@@ -197,13 +386,13 @@ function startNewSession() {
       const filterText = sectionFilterInput.trim().toLowerCase();
       
       if (filterText.length > 0) {
-          // Split user input by comma, trim spaces, remove empty
-          const targetSections = filterText.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+          const targetSections = filterText.split(',').map(s => s.trim()).filter(s => s);
           
           allRaw.forEach(q => {
-              const qSec = (q._section || "").toLowerCase();
-              // Check if question section contains ANY of the user inputs
-              const isMatch = targetSections.some(target => qSec.includes(target));
+              let isMatch = false;
+              targetSections.forEach(target => {
+                  if (checkSectionMatch(q._section, target, currentMapping)) isMatch = true;
+              });
               
               if (isMatch) activePool.push(q);
               else inactivePool.push(q);
@@ -329,9 +518,10 @@ function startResumeSession() {
                 const targetSections = sectionFilter.split(',').map(s => s.trim()).filter(s => s);
                 
                 schemeCandidates.forEach(q => {
-                    // Check both hydrated 'section' and raw '_section'
-                    const qSec = (q.section || q._section || "").toLowerCase();
-                    const isMatch = targetSections.some(target => qSec.includes(target));
+                    let isMatch = false;
+                    targetSections.forEach(target => {
+                        if (checkSectionMatch(q.section || q._section, target, currentMapping)) isMatch = true;
+                    });
                     
                     if (isMatch) finalCandidates.push(q);
                     else remainingPool.push(q); // Non-matching sections go back to storage
@@ -409,7 +599,7 @@ function startResumeSession() {
 function saveAndLoad() {
     if (!activeSession) return;
 
-    // 1. Update UI Counters (FIXED ID HERE)
+    // 1. Update UI Counters
     const qCountBtn = document.getElementById("questionCounter");
     if (qCountBtn) {
         qCountBtn.innerText = `Q${activeSession.qIndex + 1} / ${activeSession.questions.length}`;
@@ -437,16 +627,29 @@ function saveAndLoad() {
             isStorageFull = true;
             localStorage.removeItem("QUIZ_SESSION");
             
-            // Show a non-intrusive warning
+            // Show a non-intrusive warning with fade transitions
             const msg = document.createElement("div");
+            msg.style.cssText = "position:fixed; top:0; left:0; width:100%; background:#f59e0b; color:black; text-align:center; padding:8px; z-index:9999; font-weight:bold; box-shadow:0 2px 10px rgba(0,0,0,0.2); opacity:1; transition: opacity 0.5s ease;";
             msg.innerHTML = `
-                <div style="position:fixed; top:0; left:0; width:100%; background:#f59e0b; color:black; text-align:center; padding:8px; z-index:9999; font-weight:bold; box-shadow:0 2px 10px rgba(0,0,0,0.2);">
-                    ⚠️ Large File Detected. Auto-Save Disabled. <br/>
-                    <span style="font-weight:normal; font-size:0.85em;">Use "Save & Exit" or "Submit" at the end to save progress.</span>
-                    <button onclick="this.parentElement.remove()" style="margin-left:15px; background:white; border:1px solid #333; padding:2px 8px; cursor:pointer;">OK</button>
-                </div>
+                ⚠️ Large File Detected. Auto-Save Disabled. <br/>
+                <span style="font-weight:normal; font-size:0.85em;">Use "Save & Exit" or "Submit" at the end to save progress.</span>
+                <button onclick="this.parentElement.remove()" style="margin-left:15px; background:white; border:1px solid #333; padding:2px 8px; cursor:pointer;">OK</button>
             `;
             document.body.appendChild(msg);
+
+            // Automatically fade out after 5 seconds, then remove from DOM
+            setTimeout(() => {
+                if (msg && msg.parentElement) {
+                    msg.style.opacity = '0'; // Start the fade out animation
+                    
+                    // Wait 500ms for the CSS transition to finish, then delete the element
+                    setTimeout(() => {
+                        if (msg.parentElement) {
+                            msg.remove();
+                        }
+                    }, 500); 
+                }
+            }, 5000);
 
         } else {
             // Attempt standard save
@@ -1058,7 +1261,7 @@ function startQuestionTimer() {
     const isLastQuestion = qIndex === questions.length - 1;
     
     // Apply 5x multiplier if last, otherwise use normal setting
-    qSecondsLeft = isLastQuestion ? (activeSession.settings.time * 0.25) : activeSession.settings.time; 
+    qSecondsLeft = isLastQuestion ? (activeSession.settings.time * 5) : activeSession.settings.time; 
     
     resumeQuestionTimer(); 
 }

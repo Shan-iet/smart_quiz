@@ -486,3 +486,108 @@ strike, s, del {
     background: rgba(16, 185, 129, 0.25); /* Dark Greenish Tint on Hover */
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
 }
+
+/* --- CUSTOM DROPDOWN FILTERS --- */
+.filter-dropdown-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.select-box {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: white;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    appearance: none; /* remove default arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    cursor: pointer;
+    min-width: 0; /* Prevents overflow */
+    
+    /* Truncation for long selected values */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    padding-right: 30px; /* Make room for the dropdown arrow */
+}
+
+.select-box:focus { 
+    outline: none; 
+    border-color: var(--primary); 
+}
+
+.select-box option { 
+    background: var(--bg); 
+    color: white; 
+}
+
+.btn-tick {
+    background: var(--success); 
+    color: white; 
+    border: none;
+    border-radius: 6px; 
+    padding: 0 14px; 
+    cursor: pointer;
+    font-size: 1.1rem; 
+    font-weight: bold; 
+    transition: all 0.2s;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
+
+.btn-tick:hover { 
+    background: #059669; 
+    transform: scale(1.05); 
+}
+
+.tag-container { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 8px; 
+    margin-top: 10px; 
+}
+
+.filter-tag {
+    background: rgba(99, 102, 241, 0.15); 
+    border: 1px solid var(--primary);
+    color: var(--text); 
+    padding: 4px 10px; 
+    border-radius: 20px;
+    font-size: 0.8rem; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 6px;
+    max-width: 100%; /* Prevent tag from exceeding container width */
+    box-sizing: border-box;
+}
+
+.tag-text {
+    display: inline-block;
+    max-width: 180px; /* Truncates long text inside the tag */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.tag-close {
+    cursor: pointer; 
+    color: var(--danger); 
+    font-weight: bold;
+    font-size: 1.1rem; 
+    line-height: 1; 
+    margin-left: 2px;
+    flex-shrink: 0; /* Prevents the 'x' from getting squished */
+}
+
+.tag-close:hover { 
+    color: #dc2626; 
+}
