@@ -398,11 +398,27 @@ input[type="file"] { display: none; }
   #showSidebarBtn { display: none !important; }
 }
 @media (max-width: 768px) {
+    /* 1. Stack the main Action Cards sooner (covers tablets and large phones) */
+    .action-grid { grid-template-columns: 1fr; }
+    
+    /* 2. Stack the Quiz options side-by-side to top-down */
     .options { grid-template-columns: 1fr; } 
     .option-btn:last-child:nth-child(odd) { grid-column: auto; }
 }
+
 @media (max-width: 650px) {
-    .action-grid { grid-template-columns: 1fr; }
+    /* 3. Force the internal flex rows to stack top-down */
+    .input-row { 
+        flex-direction: column; 
+        gap: 10px; 
+    }
+    
+    /* 4. Allow the dropdowns and tick button to wrap to a new line if needed */
+    .filter-dropdown-group { 
+        flex-wrap: wrap; 
+    }
+    
+    /* Keep your existing button controls stacking */
     .controls { flex-direction: column; gap: 12px; }
     .controls > button, .next-group, .next-group > button { width: 100%; }
 }
