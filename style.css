@@ -400,13 +400,18 @@ input[type="file"] { display: none; }
 /* REVISED: Removed responsive layout stacking. Keeping minor tweaks for font sizes */
 /* --- MEDIA QUERIES --- */
 @media (max-width: 900px) {
-  /* Force top-down stacking for the main cards */
-  .action-grid { grid-template-columns: 1fr !important; }
+  /* STRICTLY SCOPED TO FRONT PAGE ONLY */
+  #home .action-grid { 
+      display: flex !important; 
+      flex-direction: column !important; 
+  }
   
-  /* Stack the input fields inside the cards to save horizontal space */
-  .input-row { flex-direction: column; gap: 10px; }
+  #home .input-row { 
+      flex-direction: column; 
+      gap: 10px; 
+  }
   
-  /* Sidebar UI fixes */
+  /* Sidebar UI fixes (These were in your original code and apply to the quiz screen) */
   .sidebar-section { min-width: 0; }
   .mobile-notes-view { display: block; }
   .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } 
