@@ -387,18 +387,15 @@ input[type="file"] { display: none; }
 /* --- MEDIA QUERIES --- */
 /* REVISED: Removed responsive layout stacking. Keeping minor tweaks for font sizes */
 @media (max-width: 900px) {
-  /* Previously this stacked columns. Now we remove grid-template-columns change */
-  /* .app-container.quiz-mode { grid-template-columns: 1fr; }  <-- DELETED */
-  
-  /* Sidebar tweaks for smaller width but still vertical */
+  .action-grid { grid-template-columns: 1fr; } /* Moved here to catch ALL mobile devices & tablets */
   .sidebar-section { min-width: 0; }
   .mobile-notes-view { display: block; }
-  .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } /* Hide large note input in sidebar on small screens to save space */
+  .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } 
   .sidebar-close-btn { display: none; }
   #showSidebarBtn { display: none !important; }
 }
+
 @media (max-width: 768px) {
-    .action-grid { grid-template-columns: 1fr; } 
     .options { grid-template-columns: 1fr; } 
     .option-btn:last-child:nth-child(odd) { grid-column: auto; }
 }
