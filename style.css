@@ -398,14 +398,16 @@ input[type="file"] { display: none; }
   #showSidebarBtn { display: none !important; }
 }
 @media (max-width: 768px) {
+    .action-grid { grid-template-columns: 1fr; } 
     .options { grid-template-columns: 1fr; } 
     .option-btn:last-child:nth-child(odd) { grid-column: auto; }
 }
+
 @media (max-width: 650px) {
-    .action-grid { grid-template-columns: 1fr; }
     .controls { flex-direction: column; gap: 12px; }
     .controls > button, .next-group, .next-group > button { width: 100%; }
 }
+
 .hidden { display: none !important; }
 
 /* --- MOBILE ADJUSTMENTS --- */
