@@ -402,9 +402,15 @@ input[type="file"] { display: none; }
 @media (max-width: 900px) {
   /* STRICTLY SCOPED TO FRONT PAGE ONLY */
   #home .action-grid { 
-      display: flex !important; 
-      flex-direction: column !important; 
+      display: grid !important; 
+      grid-template-columns: 1fr !important; 
   }
+  
+  #home .input-row { 
+      flex-direction: column; 
+      gap: 10px; 
+  }
+  
   
   #home .input-row { 
       flex-direction: column; 
