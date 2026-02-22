@@ -401,18 +401,7 @@ input[type="file"] { display: none; }
 /* REVISED: Removed responsive layout stacking. Keeping minor tweaks for font sizes */
 /* --- MEDIA QUERIES --- */
 @media (max-width: 900px) {
-  /* STRICTLY SCOPED TO FRONT PAGE ONLY */
-  #home .action-grid { 
-      display: flex !important; 
-      flex-direction: column !important; 
-  }
-  
-  #home .input-row { 
-      flex-direction: column; 
-      gap: 10px; 
-  }
-  
-  /* Sidebar UI fixes (These were in your original code and apply to the quiz screen) */
+/* Sidebar UI fixes (These were in your original code and apply to the quiz screen) */
   .sidebar-section { min-width: 0; }
   .mobile-notes-view { display: block; }
   .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } 
@@ -618,4 +607,12 @@ strike, s, del {
 
 .tag-close:hover { 
     color: #dc2626; 
+}
+
+/* Targets ONLY mobile/small tablet screens, and ONLY when held vertically */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+  #home .action-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
 }
