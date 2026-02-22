@@ -94,7 +94,8 @@ h1, h2, h3, h4 { margin-top: 0; color: white; }
 }
 .action-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15); }
 .action-card h3 { font-size: 1.2rem; margin-bottom: 10px; text-align: center; }
-.custom-file-upload { display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--input-bg); border: 2px dashed #475569; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted); transition: all 0.2s; }
+.custom-file-upload { display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--input-bg); border: 2px dashed #475569; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted); transition: all 0.2s;max-width: 100%; overflow: hidden; }
+.custom-file-upload span {white-space: nowrap;overflow: hidden;text-overflow: ellipsis;display: inline-block; max-width: 100%;}
 .custom-file-upload:hover { border-color: var(--primary); color: var(--text); background: rgba(99, 102, 241, 0.05); }
 input[type="file"] { display: none; }
 .settings-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
