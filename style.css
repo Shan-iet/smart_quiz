@@ -82,16 +82,7 @@ h1, h2, h3, h4 { margin-top: 0; color: white; }
 /* --- HOME SCREEN --- */
 .hero-title { font-size: 2rem; margin-bottom: 20px; text-align: center; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(to right, #6366f1, #a855f7); background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; width: 100%; }
-.action-card { 
-  padding: 25px; 
-  background: rgba(255,255,255,0.02); 
-  border-radius: 12px; 
-  border: 1px solid var(--border); 
-  transition: all 0.3s ease; 
-  display: flex; 
-  flex-direction: column; 
-  min-width: 0; /* CRITICAL FIX: Allows card to shrink below content width */
-}
+.action-card { padding: 25px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border); transition: all 0.3s ease; display: flex; flex-direction: column; }
 .action-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15); }
 .action-card h3 { font-size: 1.2rem; margin-bottom: 10px; text-align: center; }
 .custom-file-upload { display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--input-bg); border: 2px dashed #475569; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted); transition: all 0.2s; }
@@ -99,10 +90,7 @@ h1, h2, h3, h4 { margin-top: 0; color: white; }
 input[type="file"] { display: none; }
 .settings-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
 .input-row { display: flex; gap: 15px; margin-bottom: 10px; }
-.input-wrap { 
-  flex: 1; 
-  min-width: 0; /* CRITICAL FIX: Allows inputs to shrink */
-}
+.input-wrap { flex: 1; }
 .input-wrap label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; font-weight: 600; }
 .input-wrap input { width: 100%; background: var(--input-bg); border: 1px solid var(--border); color: white; padding: 8px 10px; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; transition: border-color 0.2s; }
 .input-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
@@ -398,45 +386,26 @@ input[type="file"] { display: none; }
 
 /* --- MEDIA QUERIES --- */
 /* REVISED: Removed responsive layout stacking. Keeping minor tweaks for font sizes */
-/* --- MEDIA QUERIES --- */
 @media (max-width: 900px) {
-  /* STRICTLY SCOPED TO FRONT PAGE ONLY */
-  #home .action-grid { 
-      display: grid !important; 
-      grid-template-columns: 1fr !important; 
-  }
+  /* Previously this stacked columns. Now we remove grid-template-columns change */
+  /* .app-container.quiz-mode { grid-template-columns: 1fr; }  <-- DELETED */
   
-  #home .input-row { 
-      flex-direction: column; 
-      gap: 10px; 
-  }
-  
-  
-  #home .input-row { 
-      flex-direction: column; 
-      gap: 10px; 
-  }
-  
-  /* Sidebar UI fixes (These were in your original code and apply to the quiz screen) */
+  /* Sidebar tweaks for smaller width but still vertical */
   .sidebar-section { min-width: 0; }
   .mobile-notes-view { display: block; }
-  .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } 
+  .sidebar #noteInput, .sidebar #sidebarWordCount { display: none; } /* Hide large note input in sidebar on small screens to save space */
   .sidebar-close-btn { display: none; }
   #showSidebarBtn { display: none !important; }
 }
-
 @media (max-width: 768px) {
-  /* Stack quiz options top-down */
-  .options { grid-template-columns: 1fr; } 
-  .option-btn:last-child:nth-child(odd) { grid-column: auto; }
+    .options { grid-template-columns: 1fr; } 
+    .option-btn:last-child:nth-child(odd) { grid-column: auto; }
 }
-
 @media (max-width: 650px) {
-  /* Stack footer buttons */
-  .controls { flex-direction: column; gap: 12px; }
-  .controls > button, .next-group, .next-group > button { width: 100%; }
+    .action-grid { grid-template-columns: 1fr; }
+    .controls { flex-direction: column; gap: 12px; }
+    .controls > button, .next-group, .next-group > button { width: 100%; }
 }
-
 .hidden { display: none !important; }
 
 /* --- MOBILE ADJUSTMENTS --- */
@@ -520,34 +489,33 @@ strike, s, del {
 
 /* --- CUSTOM DROPDOWN FILTERS --- */
 .filter-dropdown-group {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-  min-width: 0; /* CRITICAL FIX */
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
 }
 
 .select-box {
-  flex: 1;
-  width: 100%;
-  max-width: 100%; /* Prevents select from ignoring bounds */
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  color: white;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  transition: border-color 0.2s;
-  appearance: none; 
-  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 14px;
-  cursor: pointer;
-  min-width: 0; 
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  padding-right: 30px; 
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: white;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    appearance: none; /* remove default arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    cursor: pointer;
+    min-width: 0; /* Prevents overflow */
+    
+    /* Truncation for long selected values */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    padding-right: 30px; /* Make room for the dropdown arrow */
 }
 
 .select-box:focus { 
