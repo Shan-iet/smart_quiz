@@ -421,9 +421,10 @@ input[type="file"] { display: none; }
 }
 
 @media (max-width: 768px) {
-  /* Stack quiz options top-down */
-  .options { grid-template-columns: 1fr; } 
-  .option-btn:last-child:nth-child(odd) { grid-column: auto; }
+  #home .action-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 650px) {
