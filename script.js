@@ -675,6 +675,7 @@ function saveAndLoad() {
 }
 
 function loadSession() {
+    document.querySelector('meta[name="viewport"]').setAttribute("content", "width=1024");
   document.querySelector('.app-container').classList.add('quiz-mode');
   questions = activeSession.questions; qIndex = activeSession.qIndex || 0; totalSeconds = activeSession.totalSeconds || 0;
   startTotalTimer(); loadQuestion();
@@ -1438,6 +1439,7 @@ function downloadSyncFile(fileType = "sync") {
 }
 
 function showReport() {
+    document.querySelector('meta[name="viewport"]').setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1");
   const r = activeSession.report;
   const s = activeSession.settings;
   document.getElementById("quiz").classList.add("hidden");
