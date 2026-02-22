@@ -138,10 +138,16 @@
      <div class="feedback-tools">
         <div id="editorToolbar" class="hidden" style="display:inline-flex; align-items:center; gap:5px; margin-right:5px;">
     
-    <button class="btn-xs btn-tool" onclick="applyStrike()" title="Strikethrough"><s>S</s></button>
-    <button class="btn-xs btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)">🖊</button>
+    <button class="btn-xs btn-tool" onclick="applyStrike()" title="Strikethrough" style="color: #ef4444;">
+    <s>abcd</s><span class="tool-text"> Strike</span>
+    </button>
+    <button class="btn-xs btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
+    🖍️<span class="tool-text"> Highlight</span>
+    </button>
     
-    <button class="btn-xs btn-save-tool" onclick="saveExplanationEdit()" title="Save Changes">✅</button>
+    <button class="btn-xs btn-save-tool" onclick="saveExplanationEdit()" title="Save Changes">
+    ✅<span class="tool-text"> Save</span>
+    </button>
 </div>
         <button id="editExpBtn" class="btn-xs btn-secondary" onclick="toggleExplanationEdit()">✏️</button>
      </div>

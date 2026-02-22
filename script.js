@@ -22,6 +22,14 @@ const BASE_MAPPING = {
     "CENTRE AND STATE EXECUTIVES", "UNION AND STATE LEGISLATURE", "LOCAL GOVERNMENT - UNION TERRITORIES SPECIAL STATUS AREAS",
     "CONSTITUTIONAL AND NON-CONSTITUTIONAL BODIES", "MISCELLANEOUS POLITY", "LOCAL GOVERNMENT"
   ],
+  "MODERN HISTORY": [
+     "ADVENT OF EUROPEANS AND CONSOLIDATION OF BRITISH EMPIRE IN INDIA", 
+     "REBELLIONS AND REFORM MOVEMENTS",
+     "EMERGENCE OF INDIAN NATIONALISM [1857-1919]",
+     "ERA OF MASS NATIONALISM [1919-1947]", 
+     "GOVERNANCE AND OTHER ASPECTS",
+     "MISCELLANEOUS" 
+  ],
   "OTHER": []
 };
 
@@ -1114,7 +1122,7 @@ function openExplanationInTab(fullExplanation, qNum) {
     .tips-box { margin-top:25px; background:var(--tips-bg); border-left:5px solid var(--tips-border); padding:15px; border-radius:4px; }
     .toolbar-group { display: flex; gap: 8px; align-items: center; }
 
-    @media (max-width: 600px) { body { font-size: 16px; padding: 10px 0; } .container { width: 96%; padding: 15px; } .btn { padding: 4px 8px; font-size: 0.8rem; } }
+    @media (max-width: 600px) { body { font-size: 16px; padding: 10px 0; } .container { width: 96%; padding: 15px; } .btn { padding: 4px 8px; font-size: 0.8rem; } .tool-text { display: none; } .btn-tool { padding: 4px 6px; } }
 </style>
 </head>
 <body data-theme="dark">
@@ -1124,10 +1132,16 @@ function openExplanationInTab(fullExplanation, qNum) {
             <div class="toolbar-group">
                 <div id="editTools" class="hidden toolbar-group" style="align-items:center;">
                     
-                    <button class="btn btn-tool" onclick="applyStrike()" title="Strikethrough"><s>S</s></button>
-                    <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)">🖊</button>
+                    <button class="btn btn-tool" onclick="applyStrike()" title="Strikethrough" style="color: #ef4444;">
+                    <s>abc</s><span class="tool-text"> Strike</span>
+                    </button>
+                    <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
+                        🖍️<span class="tool-text"> Highlight</span>
+                    </button>
                     
-                    <button class="btn btn-save" onclick="saveChildChanges()">✅ Save</button>
+                    <button class="btn btn-save" onclick="saveChildChanges()" title="Save Changes">
+                    ✅<span class="tool-text"> Save</span>
+                    </button>
                 </div>
                 
                 <button id="editToggleBtn" class="btn" onclick="toggleChildEdit()">✏️ Edit</button>
