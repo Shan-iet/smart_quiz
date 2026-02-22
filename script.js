@@ -1365,12 +1365,18 @@ function finishQuiz(force = false) {
   };
   activeSession.status = "completed";
   
-  // --- CRITICAL FIX 1: Prevent Storage Crash ---
-  // If this fails (because file is 10MB), we catch the error and continue anyway.
-  try {
-      saveToHistory();
-  } catch (e) {
-      console.warn("History save failed (Storage Full). Skipping to Report.", e);
+  // --- CRITICAL FIX 1: Prevent Storage Crash & Freeze ---
+  // Only attempt to save to history if the file size is under 4.5MB 
+  // and local storage hasn't already crashed.
+  if (!isStorageFull) {
+      try {
+          saveToHistory();
+      } catch (e) {
+          console.warn("History save failed (Storage Full). Skipping to Report.", e);
+          isStorageFull = true; // Ensure future attempts are also blocked
+      }
+  } else {
+      console.warn("Skipping history save: File is > 4.5MB or storage is at capacity.");
   }
   
   showReport(); 
