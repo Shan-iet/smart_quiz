@@ -1339,7 +1339,7 @@ function openExplanationInTab(fullExplanation, qNum) {
                     <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
                         🖍️<span class="tool-text"> Highlight</span>
                     </button>
-                    <button class="btn btn-tool" onclick="enableChildTypingMode()" title="Enable Typing" style="color: #10b981;">
+                    <button class="btn btn-tool" onclick="toggleChildTypingMode()" title="Toggle Typing" style="color: #10b981;">
                         ⌨️<span class="tool-text"> Type</span>
                     </button>
 
@@ -1381,12 +1381,21 @@ function openExplanationInTab(fullExplanation, qNum) {
             }
         }
 
-        function enableChildTypingMode() {
+        function toggleChildTypingMode() {
             const el = document.getElementById('editable-content');
-            el.removeAttribute('inputmode'); // Remove the restriction
-            el.focus(); // Force focus to bring up the keyboard
+            
+            // Check if the keyboard is currently suppressed
+            if (el.getAttribute("inputmode") === "none") {
+                // Mode: Formatting -> Switch to Typing
+                el.removeAttribute("inputmode");
+                el.focus(); // Slides the keyboard UP
+            } else {
+                // Mode: Typing -> Switch back to Formatting
+                el.setAttribute("inputmode", "none");
+                el.blur(); // Forces the keyboard DOWN
+            }
         }
-        
+
         // 1. MONOCHROME STRIKETHROUGH (CHILD)
         function applyStrike() {
             document.execCommand('strikeThrough', false, null);
@@ -1942,11 +1951,21 @@ function toggleExplanationEdit() {
     }
 }
 
-function enableTypingMode() {
+function toggleTypingMode() {
     const body = document.getElementById("feedbackBody");
-    body.removeAttribute("inputmode"); // Remove the restriction
-    body.focus(); // Force focus to bring up the keyboard immediately
+    
+    // Check if the keyboard is currently suppressed
+    if (body.getAttribute("inputmode") === "none") {
+        // Mode: Formatting -> Switch to Typing
+        body.removeAttribute("inputmode"); 
+        body.focus(); // Slides the keyboard UP
+    } else {
+        // Mode: Typing -> Switch back to Formatting
+        body.setAttribute("inputmode", "none"); 
+        body.blur(); // Forces the keyboard DOWN
+    }
 }
+
 // 1. MONOCHROME STRIKETHROUGH
 // Just executes standard strikethrough (inherits text color)
 function applyStrike() {
