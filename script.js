@@ -1,4 +1,5 @@
 let isStorageFull = false;
+let tempResumeData = null;
 let activeSession = null, questions = [], qIndex = 0, qTimer, totalTimer, autoSaveInterval, questionDurationTimer;
 let totalSeconds = 0, qSecondsLeft = 0;
 let recentHistory = JSON.parse(localStorage.getItem("QUIZ_HISTORY") || "[]");
@@ -19,8 +20,8 @@ const BASE_MAPPING = {
   ],
   "POLITY": [
     "INTRODUCTION TO THE CONSTITUTION", "FOUNDATIONS OF CONSTITUTION", "SYSTEM OF GOVERNMENT", "JUDICIARY",
-    "CENTRE AND STATE EXECUTIVES", "UNION AND STATE LEGISLATURE", "LOCAL GOVERNMENT - UNION TERRITORIES SPECIAL STATUS AREAS",
-    "CONSTITUTIONAL AND NON-CONSTITUTIONAL BODIES", "MISCELLANEOUS POLITY", "LOCAL GOVERNMENT"
+    "CENTRE AND STATE EXECUTIVES", "UNION AND STATE LEGISLATURE","CONSTITUTIONAL AND NON-CONSTITUTIONAL BODIES", "MISCELLANEOUS POLITY", 
+    "LOCAL GOVERNMENT"
   ],
   "MODERN HISTORY": [
      "ADVENT OF EUROPEANS AND CONSOLIDATION OF BRITISH EMPIRE IN INDIA", 
@@ -45,12 +46,16 @@ function sanitizeSectionName(str) {
     return str.split('').map(char => homoglyphs[char] || char).join('');
 }
 
-let currentMapping = JSON.parse(JSON.stringify(BASE_MAPPING));
+let currentMapping = {};
 
 window.onload = () => {
     renderRecentQuizzes();
     document.querySelector('.app-container').classList.remove('quiz-mode');
     initDropdowns();
+    // Attach listeners to update dropdowns instantly when "Resume Mode" changes
+    document.querySelectorAll('input[name="resumeMode"]').forEach(radio => {
+        radio.addEventListener('change', updateResumeDropdowns);
+    });
 };
 
 function initDropdowns() {
@@ -78,13 +83,21 @@ function updateSectionDropdown(subjectId, sectionId) {
     const subj = document.getElementById(subjectId).value;
     const secSelect = document.getElementById(sectionId);
     secSelect.innerHTML = '<option value="">Section</option>';
+    
     if (subj && currentMapping[subj]) {
-        let allOpt = document.createElement('option');
-        allOpt.value = subj; 
-        allOpt.innerText = `All ${subj}`;
-        allOpt.title = `All ${subj}`; // Add hover tooltip
-        secSelect.appendChild(allOpt);
+        // Strict "All" Rendering: Compare uploaded section count with BASE_MAPPING count
+        const baseCount = BASE_MAPPING[subj] ? BASE_MAPPING[subj].length : 0;
+        const currentCount = currentMapping[subj].length;
         
+        if (baseCount > 0 && currentCount === baseCount) {
+            let allOpt = document.createElement('option');
+            allOpt.value = subj; 
+            allOpt.innerText = `All ${subj}`;
+            allOpt.title = `All ${subj}`; // Add hover tooltip
+            secSelect.appendChild(allOpt);
+        }
+        
+        // Populate the individual sections available in the JSON
         currentMapping[subj].forEach(sec => {
             let opt = document.createElement('option');
             opt.value = sec; 
@@ -136,13 +149,6 @@ async function updateFileNameAndExtract(input, displayId) {
     await extractSectionsFromFiles(input);
 }
 
-// Rewriting original Sync Import handler
-async function initiateSyncImport() {
-    const input = document.getElementById('importInput');
-    document.getElementById('syncNameDisplay').innerText = input.files[0]?.name || "Select File";
-    await extractSectionsFromFiles(input);
-}
-
 async function extractSectionsFromFiles(inputElement) {
     const files = inputElement.files;
     let newSections = new Set();
@@ -178,20 +184,46 @@ async function extractSectionsFromFiles(inputElement) {
 }
 
 function updateDynamicMapping(extractedSections) {
-    currentMapping = JSON.parse(JSON.stringify(BASE_MAPPING));
-    if (!currentMapping["OTHER"]) currentMapping["OTHER"] = [];
+    currentMapping = {}; // Start completely empty
     
-    let existingSectionsList = [];
-    for (let subj in BASE_MAPPING) existingSectionsList.push(...BASE_MAPPING[subj].map(s => s.toLowerCase().replace(/[\s_-]+/g, '')));
+    // Build a normalized lookup for BASE_MAPPING to ensure accurate matching
+    const baseLookup = {};
+    for (let subj in BASE_MAPPING) {
+        baseLookup[subj] = BASE_MAPPING[subj].map(s => s.toLowerCase().replace(/[\s_-]+/g, ''));
+    }
     
     extractedSections.forEach(sec => {
         let normalizedSec = sec.toLowerCase().replace(/[\s_-]+/g, '');
-        if (!existingSectionsList.includes(normalizedSec)) {
-            if (!currentMapping["OTHER"].some(o => o.toLowerCase().replace(/[\s_-]+/g, '') === normalizedSec)) {
+        let foundMatch = false;
+        
+        for (let subj in baseLookup) {
+            if (baseLookup[subj].includes(normalizedSec)) {
+                // Match found! Use the original formatted section name from BASE_MAPPING
+                const originalSecIndex = baseLookup[subj].indexOf(normalizedSec);
+                const originalSec = BASE_MAPPING[subj][originalSecIndex];
+                
+                if (!currentMapping[subj]) {
+                    currentMapping[subj] = [];
+                }
+                if (!currentMapping[subj].includes(originalSec)) {
+                    currentMapping[subj].push(originalSec);
+                }
+                foundMatch = true;
+                break;
+            }
+        }
+        
+        // If it doesn't match anything in BASE_MAPPING, push to OTHER
+        if (!foundMatch) {
+            if (!currentMapping["OTHER"]) {
+                currentMapping["OTHER"] = [];
+            }
+            if (!currentMapping["OTHER"].includes(sec)) {
                 currentMapping["OTHER"].push(sec);
             }
         }
     });
+    
     initDropdowns(); // Refresh UI
 }
 
@@ -327,7 +359,7 @@ function startNewSession() {
 
   // Inputs
   const limitInput = document.getElementById("limitInput").value;
-  const sectionFilterInput = document.getElementById("sectionInput").value; // NEW INPUT
+  const sectionFilterInput = document.getElementById("sectionInput").value; 
   const shouldShuffle = document.getElementById("shuffleToggle").checked;
   const showOutdatedOnly = document.getElementById("outdatedOnlyToggle").checked;
   const userMark = parseFloat(document.getElementById("markInput").value) || 1.33;
@@ -335,7 +367,6 @@ function startNewSession() {
 
   const smartName = generateSmartFilename(files);
 
-  // 1. LIGHTWEIGHT READER (No Regex/Formatting yet)
   const readRawFile = (file) => {
       return new Promise((resolve) => {
           const r = new FileReader();
@@ -347,18 +378,16 @@ function startNewSession() {
                   else if (json.questions) rawList = json.questions;
                   else if (json.data) rawList = json.data;
                   
-                  // Tagging Source Info
                   const rootSection = json.section || null;
                   const fileNameBase = file.name.replace(/\.[^/.]+$/, ""); 
 
                   rawList.forEach(q => {
-                      // Normalize the section NOW for easier filtering later
                       let s = q.section || rootSection || fileNameBase;
                       if (typeof s === 'string') s = s.split(/[\s_-]+/).filter(Boolean).join('_');
                       
-                      q._section = s; // Temporary internal tag
-                      q._fallbackSection = rootSection; // Keep for hydration
-                      q._fileName = fileNameBase;       // Keep for hydration
+                      q._section = s; 
+                      q._fallbackSection = rootSection; 
+                      q._fileName = fileNameBase;       
                   });
 
                   resolve(rawList);
@@ -372,13 +401,9 @@ function startNewSession() {
   };
 
   Promise.all(Array.from(files).map(readRawFile)).then(results => {
-      // 2. MERGE RAW
       let allRaw = results.flat();
       if (allRaw.length === 0) return alert("No valid questions found.");
-
-      // 3. APPLY FILTERS (Section & Outdated)
       
-      // A. Outdated Filter
       if (showOutdatedOnly) {
           allRaw = allRaw.filter(q => q.outdated === true);
           if (allRaw.length === 0) return alert("No outdated questions found.");
@@ -386,8 +411,6 @@ function startNewSession() {
           allRaw = allRaw.filter(q => q.outdated !== true);
       }
 
-      // B. Section Filter (Smart Partial Match)
-      // Logic: If user types "Polity", we match "Polity_CH1", "Polity_Basic", etc.
       let activePool = [];
       let inactivePool = [];
 
@@ -408,33 +431,25 @@ function startNewSession() {
 
           if (activePool.length === 0) return alert(`No questions found matching sections: "${filterText}"`);
       } else {
-          // No filter? Everything is active.
           activePool = allRaw;
       }
 
-      // 4. SHUFFLE (Active Pool Only)
-      if (shouldShuffle) shuffleArray(activePool);
-
-      // 5. SLICE (Limit logic)
+      // 4 & 5. SHUFFLE & SLICE (Using the Smart Selection logic)
       let limit = parseInt(limitInput);
-      if (isNaN(limit) || limit <= 0) limit = activePool.length;
-
-      // The selected few get processed. The rest go to storage.
-      const selectedRaw = activePool.slice(0, limit);
-      const overflowRaw = activePool.slice(limit); // Those that matched section but exceeded limit
-
-      // Combine overflow + non-matching sections into the "Unused" storage
-      // IMPORTANT: These stay RAW to save memory.
+      let selectionResult = applySmartSelection(activePool, limit, shouldShuffle);
+      
+      const selectedRaw = selectionResult.selected;
+      const overflowRaw = selectionResult.overflow;
       const totalUnused = [...inactivePool, ...overflowRaw];
 
-      // 6. HYDRATE (Format Text) - Only on the small 'selectedRaw' batch
+      // 6. HYDRATE (Format Text)
       const formattedActive = selectedRaw.map(q => {
           return {
               q: q.q || q.question,
               options: q.options,
               answer: (q.answer || q.answer_key || "").toUpperCase(),
               explanation: q.explanation || "",
-              section: q._section, // Use the pre-calculated section
+              section: q._section, 
               source: q.source || q.src || "", 
               sel: null, flag: false, guess: false,
               outdated: q.outdated || false,
@@ -448,8 +463,8 @@ function startNewSession() {
           status: "in-progress", 
           title: (files.length > 1 ? "Multi-Session" : smartName) + (filterText ? ` [${filterText}]` : ""),
           originalFileName: smartName, 
-          questions: formattedActive,       // ~500 Heavy Objects
-          unusedQuestions: totalUnused,     // ~9500 Light Raw Objects (Safe!)
+          questions: formattedActive,       
+          unusedQuestions: totalUnused,     
           qIndex: 0, totalSeconds: 0,
           settings: { time: 60, mark: userMark, neg: userNeg }
       };
@@ -465,137 +480,323 @@ function shuffleArray(array) {
     }
 }
 
-/* --- RESUME LOGIC --- */
-function initiateSyncImport() {
-    const input = document.getElementById('importInput');
-    updateFileName(input, 'syncNameDisplay');
-}
+function applySmartSelection(activePool, limit, shouldShuffle) {
+    // If no limit or limit exceeds pool, just return the whole pool
+    if (isNaN(limit) || limit <= 0 || limit >= activePool.length) {
+        if (shouldShuffle) shuffleArray(activePool);
+        return { selected: activePool, overflow: [] };
+    }
 
-function startResumeSession() {
-    const f = document.getElementById('importInput').files[0];
-    if(!f) return alert("Please select a Sync File first.");
+    // 1. Group questions by their section
+    const groups = {};
+    activePool.forEach(q => {
+        const sec = q._section || q.section || 'General';
+        if (!groups[sec]) groups[sec] = [];
+        groups[sec].push(q);
+    });
+    const groupKeys = Object.keys(groups);
 
-    const r = new FileReader();
-    r.onload = (e) => {
-        try {
-            const tempSyncData = JSON.parse(e.target.result);
-            const mode = document.querySelector('input[name="resumeMode"]:checked').value;
-            const doShuffle = document.getElementById('resumeShuffle').checked;
-            const resumeLimitInput = document.getElementById('resumeLimit').value;
-            const sectionFilter = document.getElementById("resumeSectionInput").value.trim().toLowerCase(); // NEW INPUT
+    let selected = [];
+    let overflow = [];
 
-            // 1. Combine Pools (Raw + Processed)
-            let processedQ = tempSyncData.questions || [];
-            let rawQ = tempSyncData.unusedQuestions || [];
-            
-            // Normalize Raw Questions for filtering (ensure they have a section string)
-            // We don't hydrate fully yet to save memory, just ensure _section exists
-            rawQ.forEach(q => {
-                if (!q._section) {
-                    let s = q.section || q._fallbackSection || tempSyncData.originalFileName || "";
-                    if (typeof s === 'string') q._section = s.split(/[\s_-]+/).filter(Boolean).join('_');
+    if (shouldShuffle) {
+        // --- WITH SHUFFLE: Guaranteed 1 per section, rest random ---
+        
+        // Shuffle each group internally
+        groupKeys.forEach(k => shuffleArray(groups[k]));
+        
+        // Shuffle keys so if limit < total sections, the dropped sections are random
+        let availableKeys = [...groupKeys];
+        shuffleArray(availableKeys); 
+        
+        // Step A: Take exactly 1 from each section
+        for (let k of availableKeys) {
+            if (selected.length >= limit) break;
+            if (groups[k].length > 0) {
+                selected.push(groups[k].shift());
+            }
+        }
+        
+        // Step B: Combine all remaining questions into a general pool
+        let remainingPool = [];
+        groupKeys.forEach(k => remainingPool.push(...groups[k]));
+        shuffleArray(remainingPool);
+        
+        // Step C: Fill the remaining quota
+        let needed = limit - selected.length;
+        selected.push(...remainingPool.slice(0, needed));
+        overflow = remainingPool.slice(needed);
+        
+        // Step D: Final shuffle so the guaranteed ones aren't all at the beginning
+        shuffleArray(selected);
+
+    } else {
+        // --- WITHOUT SHUFFLE: Equal Round-Robin Distribution ---
+        
+        let selectedGroups = {};
+        groupKeys.forEach(k => selectedGroups[k] = []);
+        let added = 0;
+        let keepGoing = true;
+        
+        // Round-robin selection: Pull one question from each section sequentially
+        while(added < limit && keepGoing) {
+            keepGoing = false;
+            for (let k of groupKeys) {
+                if (added >= limit) break;
+                if (groups[k].length > 0) {
+                    selectedGroups[k].push(groups[k].shift());
+                    added++;
+                    keepGoing = true; // As long as we found something, keep looping
                 }
-            });
+            }
+        }
+        
+        // Re-flatten the groups back into arrays (this keeps them grouped sequentially by section!)
+        groupKeys.forEach(k => {
+            selected.push(...selectedGroups[k]);
+            overflow.push(...groups[k]); // Anything left in the original groups goes to overflow
+        });
+    }
 
-            const masterPool = [...processedQ, ...rawQ].filter(q => q.outdated !== true);
+    return { selected, overflow };
+}
+
+/* --- RESUME LOGIC --- */
+async function initiateSyncImport() {
+    const input = document.getElementById('importInput');
+    
+    // 1. Update the UI text
+    if (input.files.length > 1) {
+        document.getElementById('syncNameDisplay').innerText = `${input.files.length} Files Selected`;
+    } else {
+        document.getElementById('syncNameDisplay').innerText = input.files[0]?.name || "Select File";
+    }
+    
+    // 2. Parse all files into memory and merge them
+    if (input.files.length > 0) {
+        let mergedQuestions = [];
+        let mergedUnused = [];
+        let fileNames = [];
+        let importedSettings = null;
+
+        // Helper function to read and parse a single file
+        const readAndParse = async (file) => {
+            try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                fileNames.push(file.name.replace(/\.[^/.]+$/, ""));
+                return json;
+            } catch (e) {
+                console.error("Invalid JSON in file: " + file.name, e);
+                return null; // Return null if parsing fails so we can skip it
+            }
+        };
+
+        // Read all selected files concurrently
+        const results = await Promise.all(Array.from(input.files).map(readAndParse));
+
+        // Merge the extracted data from all successfully parsed files
+        results.forEach(data => {
+            if (!data) return; // Skip files that failed to parse
+            if (!importedSettings && data.settings) importedSettings = data.settings;
+
+            // Extract previously attempted questions
+            if (data.questions) {
+                mergedQuestions.push(...data.questions);
+            }
             
-            let schemeCandidates = []; // Candidates based on Mode (Fresh/Weak/All)
-            let remainingPool = [];    // Everything else (Hidden)
-
-            // 2. Filter by SCHEME (Fresh / Weak / All)
-            if (mode === 'fresh') {
-                schemeCandidates = masterPool.filter(q => q.sel === null || q.sel === undefined);
-                remainingPool = masterPool.filter(q => q.sel !== null && q.sel !== undefined);
-            } 
-            else if (mode === 'all_attempted') {
-                schemeCandidates = masterPool;
-                remainingPool = []; 
+            // Extract unused/raw questions
+            if (data.unusedQuestions) {
+                mergedUnused.push(...data.unusedQuestions);
+            } else if (data.data) {
+                mergedUnused.push(...data.data);
+            } else if (Array.isArray(data) && !data.questions) {
+                // Fallback: If the file is just a raw array of questions
+                mergedUnused.push(...data);
             }
-            else if (mode === 'weakness') {
-                // Weakness = Wrong OR Guess
-                schemeCandidates = masterPool.filter(q => (q.sel && q.sel !== q.answer) || q.guess === true);
-                remainingPool = masterPool.filter(q => !((q.sel && q.sel !== q.answer) || q.guess === true));
-            }
+        });
 
-            if(schemeCandidates.length === 0) return alert("No questions match your Mode selection (Fresh/Weak)!");
+        // 3. Create a unified object in memory
+        tempResumeData = {
+            // Utilize your existing smart namer to combine the filenames!
+            originalFileName: generateSmartFilename(fileNames), 
+            questions: mergedQuestions,
+            unusedQuestions: mergedUnused,
+            settings: importedSettings || { time: 60, mark: 1.33, neg: 0.45 }
+        };
 
-            // 3. Filter by SECTION (New Logic)
-            let finalCandidates = [];
-            
-            if (sectionFilter.length > 0) {
-                const targetSections = sectionFilter.split(',').map(s => s.trim()).filter(s => s);
-                
-                schemeCandidates.forEach(q => {
-                    let isMatch = false;
-                    targetSections.forEach(target => {
-                        if (checkSectionMatch(q.section || q._section, target, currentMapping)) isMatch = true;
-                    });
-                    
-                    if (isMatch) finalCandidates.push(q);
-                    else remainingPool.push(q); // Non-matching sections go back to storage
-                });
-
-                if (finalCandidates.length === 0) return alert(`No questions found for section: "${sectionFilter}" in this mode.`);
-            } else {
-                finalCandidates = schemeCandidates;
-            }
-
-            // Reset status for re-attempt modes
-            if (mode === 'weakness' || mode === 'all_attempted') {
-                finalCandidates.forEach(q => {
-                    q.sel = null; q.flag = false; q.guess = false; q.timeSpent = 0;
-                });
-            }
-
-            if (doShuffle) shuffleArray(finalCandidates);
-
-            // 4. Slice (Limit Memory)
-            let activeQ = [];
-            const limit = parseInt(resumeLimitInput);
-            
-            if (!isNaN(limit) && limit > 0 && limit < finalCandidates.length) {
-                activeQ = finalCandidates.slice(0, limit);
-                remainingPool = [...remainingPool, ...finalCandidates.slice(limit)];
-            } else {
-                activeQ = finalCandidates;
-            }
-
-            // 5. Hydrate (Format Text)
-            // Only run regex on the active batch
-            const hydratedActiveQ = activeQ.map(q => {
-                const isRaw = !q.options || q._section !== undefined; 
-                if (!isRaw) return q; 
-
-                let rawSection = q._section || q.section || tempSyncData.originalFileName || "General";
-                
-                return {
-                    q: q.q || q.question,
-                    options: q.options,
-                    answer: (q.answer || q.answer_key || "").toUpperCase(),
-                    explanation: q.explanation || "",
-                    section: rawSection,
-                    source: q.source || q.src || "", 
-                    sel: null, flag: false, guess: false,
-                    outdated: q.outdated || false,
-                    isEdited: q.isEdited || false,
-                    notes: "", timeSpent: 0
-                };
-            });
-
-            activeSession = {
-                ...tempSyncData, 
-                status: "in-progress", 
-                questions: hydratedActiveQ,
-                unusedQuestions: remainingPool,
-                qIndex: 0
-            };
-            saveAndLoad();
-        } catch(err) { console.error(err); alert("Invalid Sync File or Data Structure"); }
-    };
-    r.readAsText(f);
+        // 4. Trigger the dropdown update using the newly merged data
+        updateResumeDropdowns();
+    }
 }
 
 
+function updateResumeDropdowns() {
+    if (!tempResumeData) return;
+
+    // 1. Identify selected mode and gather questions
+    const mode = document.querySelector('input[name="resumeMode"]:checked').value;
+    let processedQ = tempResumeData.questions || [];
+    let rawQ = tempResumeData.unusedQuestions || tempResumeData.data || [];
+    
+    if (!tempResumeData.questions && Array.isArray(tempResumeData)) {
+         rawQ = tempResumeData; // Fallback for raw arrays
+    }
+
+    const masterPool = [...processedQ, ...rawQ].filter(q => q.outdated !== true);
+    let schemeCandidates = [];
+
+    // 2. Filter questions based on the criterion
+    if (mode === 'fresh') {
+        schemeCandidates = masterPool.filter(q => q.sel === null || q.sel === undefined);
+    } else if (mode === 'all_attempted') {
+        schemeCandidates = masterPool;
+    } else if (mode === 'weakness') {
+        schemeCandidates = masterPool.filter(q => (q.sel && q.sel !== q.answer) || q.guess === true);
+    }
+
+    const subjSelect = document.getElementById('resumeSubjectSelect');
+    const secSelect = document.getElementById('resumeSectionSelect');
+    
+    // Clear previously selected tags to prevent filtering on vanished sections
+    document.getElementById('resumeSectionInput').value = '';
+    document.getElementById('resumeTags').innerHTML = '';
+
+    // 3. Handle Empty State
+    if (schemeCandidates.length === 0) {
+        subjSelect.innerHTML = '<option value="">Subject</option>'; // <-- MODIFIED: Reset to default
+        secSelect.innerHTML = '<option value="">Section</option>';
+        alert("No question in json for this selection"); // <-- INSERTED: Show pop-up
+        return;
+    }
+
+    // 4. Extract sections ONLY from the questions that survived the filter
+    let newSections = new Set();
+    const rootSection = tempResumeData.section || null;
+    
+    schemeCandidates.forEach(q => {
+        let s = q._section || q.section || rootSection || tempResumeData.originalFileName || "General";
+        if (typeof s === 'string') {
+            s = sanitizeSectionName(s); 
+            s = s.split(/[\s_-]+/).filter(Boolean).join(' '); // Normalize spaces
+            newSections.add(s);
+        }
+    });
+
+    // 5. Rebuild Mapping
+    // This utilizes the logic you already established to handle "Other" 
+    // and strict "All [Subject]" generation automatically.
+    updateDynamicMapping(Array.from(newSections)); 
+}
+
+/* --- RESUME LOGIC --- */
+function startResumeSession() {
+    if(!tempResumeData) return alert("Please select a valid Sync File first.");
+
+    const mode = document.querySelector('input[name="resumeMode"]:checked').value;
+    const doShuffle = document.getElementById('resumeShuffle').checked;
+    const resumeLimitInput = document.getElementById('resumeLimit').value;
+    const sectionFilter = document.getElementById("resumeSectionInput").value.trim().toLowerCase(); 
+
+    let processedQ = tempResumeData.questions || [];
+    let rawQ = tempResumeData.unusedQuestions || tempResumeData.data || [];
+    
+    if (!tempResumeData.questions && Array.isArray(tempResumeData)) {
+         rawQ = tempResumeData; 
+    }
+    
+    rawQ.forEach(q => {
+        if (!q._section) {
+            let s = q.section || q._fallbackSection || tempResumeData.originalFileName || "";
+            if (typeof s === 'string') q._section = s.split(/[\s_-]+/).filter(Boolean).join('_');
+        }
+    });
+
+    const masterPool = [...processedQ, ...rawQ].filter(q => q.outdated !== true);
+    
+    let schemeCandidates = []; 
+    let remainingPool = [];    
+
+    if (mode === 'fresh') {
+        schemeCandidates = masterPool.filter(q => q.sel === null || q.sel === undefined);
+        remainingPool = masterPool.filter(q => q.sel !== null && q.sel !== undefined);
+    } 
+    else if (mode === 'all_attempted') {
+        schemeCandidates = masterPool;
+        remainingPool = []; 
+    }
+    else if (mode === 'weakness') {
+        schemeCandidates = masterPool.filter(q => (q.sel && q.sel !== q.answer) || q.guess === true);
+        remainingPool = masterPool.filter(q => !((q.sel && q.sel !== q.answer) || q.guess === true));
+    }
+
+    if(schemeCandidates.length === 0) return alert("No questions match your Mode selection!");
+
+    let finalCandidates = [];
+    
+    if (sectionFilter.length > 0) {
+        const targetSections = sectionFilter.split(',').map(s => s.trim()).filter(s => s);
+        
+        schemeCandidates.forEach(q => {
+            let isMatch = false;
+            targetSections.forEach(target => {
+                if (checkSectionMatch(q.section || q._section, target, currentMapping)) isMatch = true;
+            });
+            
+            if (isMatch) finalCandidates.push(q);
+            else remainingPool.push(q); 
+        });
+
+        if (finalCandidates.length === 0) return alert(`No questions found for section: "${sectionFilter}" in this mode.`);
+    } else {
+        finalCandidates = schemeCandidates;
+    }
+
+    if (mode === 'weakness' || mode === 'all_attempted') {
+        finalCandidates.forEach(q => {
+            q.sel = null; q.flag = false; q.guess = false; q.timeSpent = 0;
+        });
+    }
+
+    // SLICE & SHUFFLE (Using the Smart Selection logic)
+    let limit = parseInt(resumeLimitInput);
+    let selectionResult = applySmartSelection(finalCandidates, limit, doShuffle);
+    
+    let activeQ = selectionResult.selected;
+    remainingPool = [...remainingPool, ...selectionResult.overflow];
+
+    const hydratedActiveQ = activeQ.map(q => {
+        const isRaw = !q.options || q._section !== undefined; 
+        if (!isRaw) return q; 
+
+        let rawSection = q._section || q.section || tempResumeData.originalFileName || "General";
+        
+        return {
+            q: q.q || q.question,
+            options: q.options,
+            answer: (q.answer || q.answer_key || "").toUpperCase(),
+            explanation: q.explanation || "",
+            section: rawSection,
+            source: q.source || q.src || "", 
+            sel: null, flag: false, guess: false,
+            outdated: q.outdated || false,
+            isEdited: q.isEdited || false,
+            notes: "", timeSpent: 0
+        };
+    });
+
+    activeSession = {
+        ...tempResumeData, 
+        status: "in-progress", 
+        questions: hydratedActiveQ,
+        unusedQuestions: remainingPool,
+        qIndex: 0
+    };
+
+    tempResumeData = null;
+
+    saveAndLoad();
+}
 // 1. MAKE SURE this variable is at the top of your script.js file
 // let isStorageFull = false; 
 
@@ -1408,6 +1609,17 @@ function finishQuiz(force = false) {
       }
   }, 100);
 
+  // NEW: Download "sync" file if there are unattempted questions
+  if (u > 0) {
+      setTimeout(() => {
+          try {
+              downloadSyncFile("sync");
+          } catch (e) {
+              console.error("Sync JSON download failed:", e);
+          }
+      }, 1500); // Staggered to prevent the browser from blocking simultaneous downloads
+  }
+
   // B. Download PDF (Delayed)
   // We delay this by 2 seconds so the browser doesn't block "simultaneous downloads"
   setTimeout(() => {
@@ -1416,21 +1628,26 @@ function finishQuiz(force = false) {
       } catch (e) {
           console.warn("PDF Auto-download blocked. Please download manually.");
       }
-  }, 2000);
+  }, 3000);
 }
 
 // UPDATED: downloadSyncFile now takes an argument for suffix
 function downloadSyncFile(fileType = "sync") {
-    const now = new Date();
-    const timestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
-
-    let smartName = activeSession.originalFileName;
-    if (!smartName) {
-        const uniqueSections = [...new Set(activeSession.questions.map(q => q.section))];
-        smartName = generateSmartFilename(uniqueSections);
+    // Generate and lock the base name if it doesn't exist yet
+    if (!activeSession.downloadBase) {
+        const now = new Date();
+        const timestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        let smartName = activeSession.originalFileName;
+        if (!smartName) {
+            const uniqueSections = [...new Set(activeSession.questions.map(q => q.section))];
+            smartName = generateSmartFilename(uniqueSections);
+        }
+        activeSession.downloadBase = `${smartName}_[TYPE]_${timestamp}`;
     }
 
-    const finalName = `${smartName}_${fileType}_${timestamp}.json`;
+    // Swap [TYPE] placeholder with "sync" or "completed"
+    const finalName = activeSession.downloadBase.replace("[TYPE]", fileType) + ".json";
     const jsonString = JSON.stringify(activeSession);
 
     // 1. Create Blob (Large File Support)
@@ -1631,24 +1848,21 @@ async function generateAnalyticPDF() {
       });
   }
 
-  // 1. Generate Timestamp: DD-MM-YYYY_HH-MM
-  const now = new Date();
-  const datePart = String(now.getDate()).padStart(2, '0') + "-" + 
-                   String(now.getMonth() + 1).padStart(2, '0') + "-" + 
-                   now.getFullYear();
-  const timePart = String(now.getHours()).padStart(2, '0') + "-" + 
-                   String(now.getMinutes()).padStart(2, '0');
-  
-  const timestamp = `${datePart}_${timePart}`;
+  if (!activeSession.downloadBase) {
+      const now = new Date();
+      const timestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      let smartName = activeSession.originalFileName;
+      if (!smartName) {
+          const uniqueSections = [...new Set(questions.map(q => q.section))];
+          smartName = generateSmartFilename(uniqueSections);
+      }
+      activeSession.downloadBase = `${smartName}_[TYPE]_${timestamp}`;
+  }
 
-  // 2. Generate Smart Name from Unique Sections
-  // This ensures the filename matches the content (e.g. P1_G14)
-  const uniqueSections = [...new Set(questions.map(q => q.section))];
-  const smartName = generateSmartFilename(uniqueSections);
-
-  // 3. Save with new nomenclature
-  // Format: [SmartName]_Report_[Timestamp].pdf
-  doc.save(`${smartName}_Report_${timestamp}.pdf`);
+  // Swap [TYPE] placeholder with "Report"
+  const finalName = activeSession.downloadBase.replace("[TYPE]", "Report") + ".pdf";
+  doc.save(finalName);
 }
 
 function autoSave() { 
@@ -1705,18 +1919,24 @@ function toggleExplanationEdit() {
     if (isEditing) {
         // CANCEL Action: Turn off edit mode without saving
         body.setAttribute("contenteditable", "false");
+        body.removeAttribute("inputmode");
         toolbar.classList.add("hidden");
         editBtn.innerText = "✏️";
         loadQuestion(); // Re-load to discard unsaved visual changes
     } else {
         // EDIT Action: Turn on edit mode
         body.setAttribute("contenteditable", "true");
+        body.setAttribute("inputmode", "none");
         toolbar.classList.remove("hidden");
         editBtn.innerText = "✕"; // Change icon to Cancel
-        body.focus();
     }
 }
 
+function enableTypingMode() {
+    const body = document.getElementById("feedbackBody");
+    body.removeAttribute("inputmode"); // Remove the restriction
+    body.focus(); // Force focus to bring up the keyboard immediately
+}
 // 1. MONOCHROME STRIKETHROUGH
 // Just executes standard strikethrough (inherits text color)
 function applyStrike() {
@@ -1744,6 +1964,7 @@ function saveExplanationEdit() {
     
     // 3. Turn off Edit Mode
     body.setAttribute("contenteditable", "false");
+    body.removeAttribute("inputmode");
     document.getElementById("editorToolbar").classList.add("hidden");
     document.getElementById("editExpBtn").innerText = "✏️";
     
