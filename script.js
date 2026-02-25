@@ -1339,7 +1339,10 @@ function openExplanationInTab(fullExplanation, qNum) {
                     <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
                         🖍️<span class="tool-text"> Highlight</span>
                     </button>
-                    
+                    <button class="btn btn-tool" onclick="enableChildTypingMode()" title="Enable Typing" style="color: #10b981;">
+                        ⌨️<span class="tool-text"> Type</span>
+                    </button>
+
                     <button class="btn btn-save" onclick="saveChildChanges()" title="Save Changes">
                     ✅<span class="tool-text"> Save</span>
                     </button>
@@ -1367,16 +1370,23 @@ function openExplanationInTab(fullExplanation, qNum) {
             
             if(isEditing) {
                 el.setAttribute('contenteditable', 'false');
+                el.removeAttribute('inputmode');
                 tools.classList.add('hidden');
                 btn.innerText = "✏️ Edit";
             } else {
                 el.setAttribute('contenteditable', 'true');
+                el.setAttribute('inputmode', 'none');
                 tools.classList.remove('hidden');
                 btn.innerText = "✕ Cancel";
-                el.focus();
             }
         }
 
+        function enableChildTypingMode() {
+            const el = document.getElementById('editable-content');
+            el.removeAttribute('inputmode'); // Remove the restriction
+            el.focus(); // Force focus to bring up the keyboard
+        }
+        
         // 1. MONOCHROME STRIKETHROUGH (CHILD)
         function applyStrike() {
             document.execCommand('strikeThrough', false, null);
