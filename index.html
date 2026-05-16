@@ -94,6 +94,10 @@
         </div>
       </div>
 
+      <div style="display: flex; justify-content: center; margin: 25px 0 10px 0;">
+          <button id="themeToggleBtn" class="btn btn-secondary" style="padding: 10px 30px; border-radius: 20px;" onclick="toggleMainTheme()">☀️ Light Mode</button>
+      </div>
+
       <div class="recent-section">
         <div class="recent-header"><h4>🕒 Recent Sessions</h4><button id="clearAllBtn" class="hidden btn-link" onclick="clearAllHistory()">Clear All</button></div>
         <div id="recentQuizzesList"></div>
@@ -141,7 +145,7 @@
     <button class="btn-xs btn-tool" onclick="applyStrike()" title="Strikethrough" style="color: #ef4444;">
     <s>abcd</s><span class="tool-text"> Strike</span>
     </button>
-    <button class="btn-xs btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
+    <button class="btn-xs btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #38bdf8; font-weight: bold;">
     🖍️<span class="tool-text"> Highlight</span>
     </button>
     <button class="btn-xs btn-tool" onclick="toggleTypingMode()" title="Toggle Typing" style="color: #10b981;">

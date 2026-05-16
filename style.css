@@ -23,6 +23,84 @@
   --qp-width: 78%; /* Question Panel takes 78% by default */
 }
 
+/* --- LIGHT THEME OVERRIDES (REFINED) --- */
+[data-theme="light"] {
+  --bg: #f1f5f9;       /* Slate 100: Deeper off-white to make white cards pop */
+  --card: #ffffff;     /* Pure white for depth */
+  --primary: #4f46e5;  /* Deep vibrant indigo */
+  --success: #10b981;  /* Bright emerald */
+  --danger: #ef4444;   /* Bright rose/red */
+  --warning: #f59e0b;  /* Amber */
+  --text: #1e293b;     /* Slate 800: Much softer on the eyes than pure black */
+  --text-muted: #64748b;
+  --border: #cbd5e1;   /* Slate 300: Soft but visible borders */
+  --hover: #f8fafc;    
+  --input-bg: #ffffff;
+}
+
+/* 1. Global Depth & Typography */
+[data-theme="light"] body { font-weight: 400; }
+[data-theme="light"] .card { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border-color: transparent; }
+
+/* 2. Headings */
+[data-theme="light"] h1, 
+[data-theme="light"] h2, 
+[data-theme="light"] h3, 
+[data-theme="light"] h4 { color: #0f172a; font-weight: 800; }
+
+/* 3. Inputs & Filters */
+[data-theme="light"] .input-wrap input,
+[data-theme="light"] .select-box,
+[data-theme="light"] .custom-file-upload { color: var(--text); background: var(--input-bg); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+[data-theme="light"] .select-box option { background: #ffffff; color: var(--text); }
+[data-theme="light"] .settings-group { background: #f8fafc; border: 1px solid var(--border); }
+
+/* 4. Sidebar & Settings */
+[data-theme="light"] .settings-panel { background: #ffffff; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+[data-theme="light"] .setting-row input { color: var(--text) !important; background: #ffffff !important; border: 1px solid var(--border) !important; }
+[data-theme="light"] .sidebar-note { background: #ffffff; }
+
+/* 5. Buttons, Badges & Nav */
+[data-theme="light"] .btn-secondary { background: #ffffff; color: var(--text); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+[data-theme="light"] .btn-secondary:hover { background: #f1f5f9; border-color: #94a3b8; }
+[data-theme="light"] .section-badge { background: #ffffff; color: var(--primary); border: 1px solid #c7d2fe; font-weight: 700; }
+[data-theme="light"] .flag-pill { background: #ffffff; color: var(--text); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+[data-theme="light"] .flag-pill:hover { background: #f1f5f9; border-color: var(--primary); color: var(--primary); }
+
+/* 6. Quiz Options (Making them look clickable and physical) */
+[data-theme="light"] .option-btn { background: #ffffff; border: 2px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02); color: var(--text); font-weight: 500; }
+[data-theme="light"] .option-btn:hover:not(:disabled) { background: #f8fafc; border-color: var(--primary); box-shadow: 0 4px 6px rgba(99, 102, 241, 0.1); }
+
+/* 7. Feedback & Explanations */
+[data-theme="light"] .feedback-box { background: #ffffff; border: 1px solid var(--border); border-left: 4px solid var(--success); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+[data-theme="light"] .beautified-explanation { color: #334155; }
+[data-theme="light"] .formula-box { background: #f8fafc; border: 1px solid var(--border); border-left: 4px solid var(--success); color: var(--text); }
+[data-theme="light"] .ar-box { background: #fef3c7; border-left: 3px solid #f59e0b; color: #92400e; }
+[data-theme="light"] .q-quote { background: #f8fafc; border-left: 3px solid var(--primary); color: #475569; }
+/* Fix for Roman Numerals and Bullet Points in question text */
+[data-theme="light"] .q-point { color: var(--text); font-weight: 800; }
+
+/* 8. Tables & Reports */
+[data-theme="light"] .dark-table th { color: #475569; border-bottom: 2px solid var(--border); background: #f8fafc; }
+[data-theme="light"] .dark-table td { border-bottom: 1px solid #e2e8f0; color: var(--text); }
+[data-theme="light"] .dark-table tr:hover td { background: #f8fafc; }
+[data-theme="light"] .stat-card { background: #ffffff; border-color: transparent; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+[data-theme="light"] .stat-card h2 { color: var(--primary); }
+
+/* 9. Recent Sessions */
+[data-theme="light"] .recent-item > div { background: #ffffff !important; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: transform 0.2s; }
+[data-theme="light"] .recent-item > div:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+/* Fix for Timer contrast in Light Mode */
+[data-theme="light"] .timer-pill { 
+    color: #b45309; /* Deeper, high-contrast amber */
+    background: rgba(245, 158, 11, 0.15); 
+    border-color: rgba(245, 158, 11, 0.4); 
+    font-weight: 700;
+}
+
+/* --- BASE STYLES --- */
+
 body { 
   margin: 0; 
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
@@ -183,7 +261,7 @@ input[type="file"] { display: none; }
 /* --- QUIZ UI --- */
 .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .header-left, .header-right { display: flex; align-items: center; gap: 12px; }
-.badge { background: var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+.badge { background: var(--primary); color: #ffffff; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
 .section-badge { background: #334155; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; color: #e2e8f0; font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid rgba(255,255,255,0.1); }
 .timer-pill { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 4px 10px; border-radius: 6px; font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: 0.9rem; }
 .total-time { font-size: 0.85rem; color: var(--text-muted); }
@@ -299,10 +377,11 @@ input[type="file"] { display: none; }
     color: #cbd5e1; 
     line-height: 1.6; 
     font-size: var(--exp-font-size);
+    text-align: justify;
 }
 
 /* Highlight Classes */
-.highlight-term { color: #818cf8; font-weight: 700; }
+.highlight-term { color: #38bdf8; font-weight: 700; }
 .highlight-statement { color: #34d399; font-weight: 600; background: rgba(16, 185, 129, 0.15); padding: 2px 6px; border-radius: 4px; }
 .definition-header { font-weight: 800; color: #128064; text-decoration: underline; }
 

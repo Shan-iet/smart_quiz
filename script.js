@@ -12,7 +12,7 @@ const BASE_MAPPING = {
   ],
   "ECONOMICS": [
     "BASICS OF ECONOMICS", "PUBLIC FINANCE", "BANKING AND CAPITAL MARKET", "DEVELOPMENTAL ECONOMICS",
-    "SECTORS OF ECONOMY", "INTERNATIONAL INSTITUTIONS ECONOMICS", "AGRICULTURE ECONOMICS", "Vivek Economics"
+    "SECTORS OF ECONOMY", "INTERNATIONAL INSTITUTIONS ECONOMICS", "AGRICULTURE ECONOMICS",
   ],
   "GEOGRAPHY": [
     "UNIVERSE & THE EVOLUTION OF EARTH", "GEOMORPOLOGY", "OCEANOGRAPHY", "CLIMATOLOGY",
@@ -49,6 +49,9 @@ function sanitizeSectionName(str) {
 let currentMapping = {};
 
 window.onload = () => {
+    // Load theme preference on startup
+    const savedTheme = localStorage.getItem('APP_THEME') || 'dark';
+    applyTheme(savedTheme);
     renderRecentQuizzes();
     document.querySelector('.app-container').classList.remove('quiz-mode');
     initDropdowns();
@@ -134,6 +137,7 @@ function renderTags(containerId, hiddenInputId, tagsArray) {
     tagsArray.forEach(tag => {
         const span = document.createElement('span'); 
         span.className = 'filter-tag';
+        const safeTitle = tag.replace(/"/g, '&quot;');
         // Wrap the tag text in the new .tag-text span and add a title attribute
         span.innerHTML = `
             <span class="tag-text" title="${tag}">${tag}</span> 
@@ -248,6 +252,28 @@ function handleAppVisibility() {
             // Small delay ensures browser is fully ready
             setTimeout(() => resumeAllTimers(), 100);
         }
+    }
+}
+
+/* --- THEME MANAGEMENT --- */
+function toggleMainTheme() {
+    // Check current theme attached to the HTML element
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(newTheme);
+}
+
+function applyTheme(theme) {
+    // 1. Apply to Main Document
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // 2. Save to LocalStorage
+    localStorage.setItem('APP_THEME', theme);
+    
+    // 3. Update Home Page Button text
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+        btn.innerText = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
     }
 }
 
@@ -797,13 +823,6 @@ function startResumeSession() {
 
     saveAndLoad();
 }
-// 1. MAKE SURE this variable is at the top of your script.js file
-// let isStorageFull = false; 
-
-// Ensure this variable is at the top of script.js
-// let isStorageFull = false; 
-
-// Ensure 'let isStorageFull = false;' is at the top of script.js
 
 function saveAndLoad() {
     if (!activeSession) return;
@@ -858,7 +877,7 @@ function saveAndLoad() {
                         }
                     }, 500); 
                 }
-            }, 5000);
+            }, 2100);
 
         } else {
             // Attempt standard save
@@ -1256,6 +1275,9 @@ function openExplanationInTab(fullExplanation, qNum) {
     const mainExp = parts[0];
     const tips = parts.length > 1 ? parts[1] : null;
 
+    // Grab the active theme from the main window to pass to the tab
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';  
+
     const win = window.open("", "_blank");
     
     if (!win) {
@@ -1281,7 +1303,7 @@ function openExplanationInTab(fullExplanation, qNum) {
     
     [data-theme="dark"] {
         --bg-color: #0f172a; --text-color: #e2e8f0; --card-bg: #1e293b;
-        --highlight-term: #818cf8; --highlight-stmt-bg: rgba(16,185,129,0.2); --highlight-stmt-text: #34d399;
+        --highlight-term: #38bdf8; --highlight-stmt-bg: rgba(16,185,129,0.2); --highlight-stmt-text: #34d399;
         --tips-bg: #1e293b; --tips-border: #10b981; --btn-bg: #4f46e5;
     }
     
@@ -1315,6 +1337,7 @@ function openExplanationInTab(fullExplanation, qNum) {
     strike, s, del { text-decoration: line-through; opacity: 0.8; } /* Removed fixed red color */
 
     .hidden { display: none !important; }
+    #editable-content { text-align: justify; }
     #editable-content[contenteditable="true"] { border: 2px dashed #666; padding: 10px; border-radius: 8px; outline: none; }
     #editable-content[contenteditable="true"]:focus { border-color: #6366f1; }
 
@@ -1326,7 +1349,7 @@ function openExplanationInTab(fullExplanation, qNum) {
     @media (max-width: 600px) { body { font-size: 16px; padding: 10px 0; } .container { width: 96%; padding: 15px; } .btn { padding: 4px 8px; font-size: 0.8rem; } .tool-text { display: none; } .btn-tool { padding: 4px 6px; } }
 </style>
 </head>
-<body data-theme="dark">
+<body data-theme="${activeTheme}">
     <div class="container">
         <div class="header-row">
             <h1>Q${qNum} Analysis</h1>
@@ -1336,7 +1359,7 @@ function openExplanationInTab(fullExplanation, qNum) {
                     <button class="btn btn-tool" onclick="applyStrike()" title="Strikethrough" style="color: #ef4444;">
                     <s>abc</s><span class="tool-text"> Strike</span>
                     </button>
-                    <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #818cf8; font-weight: bold;">
+                    <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #38bdf8; font-weight: bold;">
                         🖍️<span class="tool-text"> Highlight</span>
                     </button>
                     <button class="btn btn-tool" onclick="toggleChildTypingMode()" title="Toggle Typing" style="color: #10b981;">
@@ -1349,7 +1372,6 @@ function openExplanationInTab(fullExplanation, qNum) {
                 </div>
                 
                 <button id="editToggleBtn" class="btn" onclick="toggleChildEdit()">✏️ Edit</button>
-                <button class="btn" onclick="document.body.setAttribute('data-theme',document.body.getAttribute('data-theme')==='dark'?'light':'dark')">🌗 Theme</button>
             </div>
         </div>
 
@@ -1404,9 +1426,16 @@ function openExplanationInTab(fullExplanation, qNum) {
 
         // 2. HIGHLIGHT (ACTS STYLE CHILD)
         function applyHighlight() {
-            document.execCommand('bold', false, null);
-            document.execCommand('foreColor', false, '#818cf8');
-            document.getElementById('editable-content').focus();
+           var selection = window.getSelection();
+            if (!selection.rangeCount || selection.isCollapsed) return;
+
+            var container = document.createElement("div");
+            container.appendChild(selection.getRangeAt(0).cloneContents());
+            
+            var newHTML = "<span class='highlight-term'>" + container.innerHTML + "</span>";
+            
+            document.execCommand("insertHTML", false, newHTML);
+            document.getElementById("editable-content").focus();
         }
 
         function saveChildChanges() {
@@ -1974,11 +2003,18 @@ function applyStrike() {
 }
 
 // 2. HIGHLIGHT (ACTS STYLE)
-// Applies #818cf8 Color + Bold (mimics existing Acts logic)
+// Applies #38bdf8 Color + Bold (mimics existing Acts logic)
 function applyHighlight() {
-    document.execCommand('bold', false, null);
-    document.execCommand('foreColor', false, '#818cf8');
-    document.getElementById("feedbackBody").focus();
+    var selection = window.getSelection();
+            if (!selection.rangeCount || selection.isCollapsed) return;
+
+            var container = document.createElement("div");
+            container.appendChild(selection.getRangeAt(0).cloneContents());
+            
+            var newHTML = "<span class='highlight-term'>" + container.innerHTML + "</span>";
+            
+            document.execCommand("insertHTML", false, newHTML);
+            document.getElementById("feedbackBody").focus();
 }
 
 function saveExplanationEdit() {
