@@ -1335,6 +1335,17 @@ function openExplanationInTab(fullExplanation, qNum) {
     /* Ensure highlights look good */
     span[style*="background-color"] { border-radius: 2px; padding: 0 2px; }
     strike, s, del { text-decoration: line-through; opacity: 0.8; } /* Removed fixed red color */
+    /* Beautiful Custom Underline */
+    u {
+        text-decoration: underline;
+        text-decoration-color: var(--warning, #f59e0b);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+    }
+
+    [data-theme="light"] u {
+        text-decoration-color: #ea580c;
+    }
 
     .hidden { display: none !important; }
     #editable-content { text-align: justify; }
@@ -1358,6 +1369,9 @@ function openExplanationInTab(fullExplanation, qNum) {
                     
                     <button class="btn btn-tool" onclick="applyStrike()" title="Strikethrough" style="color: #ef4444;">
                     <s>abc</s><span class="tool-text"> Strike</span>
+                    </button>
+                    <button class="btn btn-tool" onclick="applyUnderline()" title="Underline" style="color: #f59e0b; font-weight: bold;">
+                    <u>abc</u><span class="tool-text"> Underline</span>
                     </button>
                     <button class="btn btn-tool" onclick="applyHighlight()" title="Highlight (Acts Style)" style="color: #38bdf8; font-weight: bold;">
                         🖍️<span class="tool-text"> Highlight</span>
@@ -1421,6 +1435,12 @@ function openExplanationInTab(fullExplanation, qNum) {
         // 1. MONOCHROME STRIKETHROUGH (CHILD)
         function applyStrike() {
             document.execCommand('strikeThrough', false, null);
+            document.getElementById('editable-content').focus();
+        }
+
+        // 1.5. UNDERLINE (CHILD)
+        function applyUnderline() {
+            document.execCommand('underline', false, null);
             document.getElementById('editable-content').focus();
         }
 
@@ -1999,6 +2019,12 @@ function toggleTypingMode() {
 // Just executes standard strikethrough (inherits text color)
 function applyStrike() {
     document.execCommand('strikeThrough', false, null);
+    document.getElementById("feedbackBody").focus(); 
+}
+
+// 1.5. UNDERLINE
+function applyUnderline() {
+    document.execCommand('underline', false, null);
     document.getElementById("feedbackBody").focus(); 
 }
 

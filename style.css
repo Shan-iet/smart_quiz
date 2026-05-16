@@ -99,6 +99,11 @@
     font-weight: 700;
 }
 
+/* Fix for Underline in Light Mode */
+[data-theme="light"] u { 
+    text-decoration-color: #ea580c; /* Deeper orange for high contrast on white */
+}
+
 /* --- BASE STYLES --- */
 
 body { 
@@ -550,6 +555,14 @@ strike, s, del {
     color: red !important;
     text-decoration: line-through;
     opacity: 0.8;
+}
+
+/* Beautiful Custom Underline */
+u {
+    text-decoration: underline;
+    text-decoration-color: var(--warning); /* Amber color */
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
 }
 
 /* Optional: If you still want the default "Outdated" tag to be red */
